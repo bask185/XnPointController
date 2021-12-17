@@ -86,16 +86,18 @@ void readSwitches()
 {
     for (int i = 0; i < nInputs; i++)
     {
-        uint8_t state = input[i].readInput() ;
+        uint8_t btnState = input[i].readInput() ;
 
-        if( state == FALLING || state == RISING)
+        if( btnState == FALLING || btnState == RISING)
         {
             if( mode == NORMAL)                                                 // set point
             {
                 uint16_t address = loadPoint( i ) ;
+                
+                uint8_t state = address > 15 ;
                 address &= 0x07FF ;
                 
-                if( state == FALLING ) state ^= 1 ;
+                if( btnState == FALLING ) state ^= 1 ;
 
                 Xnet.SetTrntPos( address, state, 1) ;
                 // delay(20) ;
@@ -103,7 +105,7 @@ void readSwitches()
             }
             else                                                                // store point
             {   
-                if( state == FALLING ) lastAddress ^= 0x8000 ;                  // flip the state bit if the switch is falling.
+                if( btnState == FALLING ) lastAddress ^= 0x8000 ;                  // flip the state bit if the switch is falling.
                 storePoint( i, lastAddress ) ;
             }
         }
