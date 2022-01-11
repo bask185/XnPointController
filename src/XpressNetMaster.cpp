@@ -29,6 +29,8 @@
 // include this library's description file
 #include "XpressNetMaster.h"
 
+#ifndef DEBUG
+
 #if defined(__AVR__)
 #include <avr/interrupt.h>
 XpressNetMasterClass *XpressNetMasterClass::active_object = 0;	//Static
@@ -1262,3 +1264,5 @@ void XpressNetMasterClass::XNetclear(void)
 	XNetMsg[XNetdata7] = 0x00;
 	XNetMsgCallByte = 0x00;	//Reset CallByte
 }
+
+#endif

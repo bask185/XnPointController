@@ -38,7 +38,9 @@ Debounce input [] =
 
 Debounce store( storeSwitch ) ;
 
+#ifndef DEBUG
 XpressNetMasterClass Xnet ;
+#endif
 
 enum modes
 {
@@ -47,26 +49,21 @@ enum modes
 } mode = NORMAL ;
 
 uint16_t lastAddress ;
+uint8_t  lastPos ;
 
-
-/************* SETUP *************/
-void setup()
-{
-    initIO() ;
-
-    Xnet.setup( Loco28, rs485dir ) ;    
-}
 
 /********** FUNCTIONS *************/
 
-void notifyXNetTrnt( uint16_t address, uint8_t Pos )				            // ONLY WORKS IF OTHER DEVICES DOES SOMETHIMG
+void notifyTrnt( uint16_t address,  uint8_t Pos )				            // ONLY WORKS IF OTHER DEVICES DOES SOMETHIMG
 {
     //address ++ ;                                                              // NEEDED?
-    Pos &= 0b11 ;
-    if( Pos >= 2) Pos -= 2 ; // convers 1-2 into 0-1
+    if( mode == NORMAL ) return ;
 
-    lastAddress  = address & 0x07FF ;                                           // NOTE it maybe that this function is called twice for every set point
-    lastAddress |= Pos << 15 ;                                                  // in that case more code is needed to compensate
+    Pos &= 0b11 ;
+    if( Pos >= 2) Pos -= 2 ; // converts 1-2 into 0-1
+
+    lastAddress  = address & 0x03FF ;                                           // NOTE it maybe that this function is called twice for every set point
+    lastPos = Pos ;                                                  // in that case more code is needed to compensate
 }
 
 void debounce()
@@ -84,32 +81,86 @@ void debounce()
 
 void readSwitches()
 {
-    for (int i = 0; i < nInputs; i++)
+    for (int pin = 0; pin < nInputs ; pin ++ )
     {
-        uint8_t btnState = input[i].readInput() ;
+        uint8_t btnState = input[pin].readInput() ;
 
         if( btnState == FALLING || btnState == RISING)
         {
             if( mode == NORMAL)                                                 // set point
             {
-                uint16_t address = loadPoint( i ) ;
+                uint16_t address = loadPoint( pin ) ;
                 
-                uint8_t state = address > 15 ;
-                address &= 0x07FF ;
+                uint8_t state = address > 15 ;                                  // stuff MSB in state
+                address &= 0x03FF ;                                             // remove MSB from address 
+                //address -- ;
                 
                 if( btnState == FALLING ) state ^= 1 ;
 
+                #ifndef DEBUG
                 Xnet.SetTrntPos( address, state, 1) ;
-                // delay(20) ;
-                // Xnet.SetTrntPos( address, state, 0) ;                        // maybe not needed? should check for this
+                delay(20) ;
+                Xnet.SetTrntPos( address, state, 0) ;                        // maybe not needed? should check for this
+                #else
+                Serial.print("pin = " ) ;               Serial.println( pin ) ;
+                Serial.print("address in EEPROM = ");   Serial.println(address) ;
+                Serial.print("state = ");               Serial.println(state) ;
+                #endif
             }
             else                                                                // store point
             {   
-                if( btnState == FALLING ) lastAddress ^= 0x8000 ;                  // flip the state bit if the switch is falling.
-                storePoint( i, lastAddress ) ;
+                if( btnState == FALLING ) lastPos ^= 0x1 ;                      // flip the state bit if the switch is falling.
+                storePoint( pin, lastAddress | (lastPos<<15) ) ;
             }
         }
     }
+}
+// uint8_t blinkAmount ; // delete me
+// uint8_t prevAddress ;
+// uint8_t blinkCounter ;
+// uint32_t blinkTime ;
+// uint8_t state = 0 ;
+
+/************* SETUP *************/
+void setup()
+{
+    initIO() ;
+
+    debounce() ;
+    delay( 100 ) ;
+    debounce() ;
+    delay( 100 ) ;
+    debounce() ;
+    delay( 100 ) ;
+    debounce() ;
+    delay( 100 ) ;
+    debounce() ;
+
+   
+    storePoint(  0, 0) ;
+    storePoint(  1, 1) ;
+    storePoint(  2, 2) ;
+    storePoint(  3, 3) ;
+    storePoint(  4, 4) ;
+    storePoint(  5, 5) ;
+    storePoint(  6, 6) ;
+    storePoint(  7, 7) ;
+    storePoint(  8, 8) ;
+    storePoint(  9, 9^0x8000 ) ;
+    storePoint( 10, 10^0x8000 ) ;
+    storePoint( 11, 11^0x8000 ) ;
+    storePoint( 12, 12^0x8000 ) ;
+    storePoint( 13, 13^0x8000 ) ;
+    storePoint( 14, 14^0x8000 ) ;
+    storePoint( 15, 15^0x8000 ) ;
+    storePoint( 16, 16^0x8000 ) ;
+
+    #ifdef DEBUG
+    Serial.begin(115200);
+    Serial.println("booted");
+    #else
+     Xnet.setup( Loco28 , rs485dir ) ;
+    #endif
 }
 
 
@@ -118,9 +169,41 @@ void loop()
     debounce() ;
     readSwitches() ;
 
-    if( store.readInput() == HIGH ) mode =  NORMAL ;
-    else                            mode = TEACHIN ;
+    //mode = NORMAL ;
+    if( store.readInput() == HIGH ) { mode =  NORMAL ; }
+    if( store.readInput() ==  LOW ) { mode = TEACHIN ; }
     
-
+    #ifndef DEBUG
     Xnet.update() ;
+    #else
+    REPEAT_MS(500)
+    {
+        Serial.println(store.readInput());
+    } END_REPEAT
+    #endif
+
+    // switch( state )  DELETE ME
+    // {
+    // case 0: 
+    //     if( lastAddress != prevAddress )
+    //     {   prevAddress  = lastAddress ;
+
+    //         blinkAmount = lastAddress * 2 + 2 ;
+    //         blinkCounter = 0 ;
+    //         state = 1 ;
+    //         digitalWrite(13, LOW) ;
+    //     }
+    //     break ;
+
+    // case 1:
+    //     if( millis() - blinkTime >= 200 )
+    //     {   blinkTime = millis() ;
+
+    //         PORTB ^= (1<<5) ;
+    //         if( ++blinkCounter == blinkAmount ) { state = 0 ; digitalWrite(13, LOW) ; }
+    //     }
+    //     break ;
+    // }
+
+
 }

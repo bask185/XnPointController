@@ -2,6 +2,8 @@
 Debounce::Debounce(unsigned char _pin) {
 	pinMode(_pin, INPUT_PULLUP); // take note I use a pull-up resistor by default
 	pin = _pin;
+	state = HIGH ;
+	oldSample = true ;
 }
 
 unsigned char Debounce::readInput() {
@@ -20,7 +22,7 @@ void Debounce::debounceInputs() {
 		if(newSample != statePrev) { // if a flank change occured return RISING or FALLING
 			statePrev = newSample ;
 
-			if(newSample)	state = RISING; 
+			if(newSample)	state = RISING;
 			else			state = FALLING;
 		}
 
