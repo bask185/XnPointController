@@ -48,22 +48,28 @@ enum modes
     NORMAL,
 } mode = NORMAL ;
 
-uint16_t lastAddress ;
-uint8_t  lastPos ;
+uint16_t lastAddress = 1 ; // dummy value for testing
+uint8_t  lastPos  ;
 
 
 /********** FUNCTIONS *************/
+void notifyXNetPower( uint8_t State )
+{
+    if( State == csNormal ) PORTC = 0 ;
+    else                    PORTC = 3 ;
+}
 
-void notifyTrnt( uint16_t address,  uint8_t Pos )				            // ONLY WORKS IF OTHER DEVICES DOES SOMETHIMG
+void notifyXNetTrnt( uint16_t address,  uint8_t Pos )				            // ONLY WORKS IF OTHER DEVICES DOES SOMETHIMG
 {
     //address ++ ;                                                              // NEEDED?
     if( mode == NORMAL ) return ;
 
     Pos &= 0b11 ;
-    if( Pos >= 2) Pos -= 2 ; // converts 1-2 into 0-1
+	if( Pos >= 2) Pos -= 2 ; // convers 1-2 into 0-1
 
     lastAddress  = address & 0x03FF ;                                           // NOTE it maybe that this function is called twice for every set point
-    lastPos = Pos ;                                                  // in that case more code is needed to compensate
+
+    lastPos = Pos ;                                                  // in that case more code is needed to compensate    
 }
 
 void debounce()
@@ -91,7 +97,7 @@ void readSwitches()
             {
                 uint16_t address = loadPoint( pin ) ;
                 
-                uint8_t state = address > 15 ;                                  // stuff MSB in state
+                uint8_t state = address >> 15 ;                                  // stuff MSB in state
                 address &= 0x03FF ;                                             // remove MSB from address 
                 //address -- ;
                 
@@ -109,8 +115,18 @@ void readSwitches()
             }
             else                                                                // store point
             {   
-                if( btnState == FALLING ) lastPos ^= 0x1 ;                      // flip the state bit if the switch is falling.
-                storePoint( pin, lastAddress | (lastPos<<15) ) ;
+                uint16_t toStore ;
+                if( btnState ==  RISING ) toStore = lastAddress | ((lastPos ^ 0x1) << 15) ;
+                else                      toStore = lastAddress | ((lastPos      ) << 15) ;
+
+                storePoint( pin, toStore ) ;
+
+                #ifdef DEBUG
+                Serial.print("\nconnecting pin "); Serial.print(pin) ;
+                Serial.print(" to address ") ; Serial.println( lastAddress ) ;
+                Serial.print("with state ") ; Serial.println( toStore ) ;
+                #endif
+                
             }
         }
     }
@@ -126,42 +142,56 @@ void setup()
 {
     initIO() ;
 
-    debounce() ;
-    delay( 100 ) ;
-    debounce() ;
-    delay( 100 ) ;
-    debounce() ;
-    delay( 100 ) ;
-    debounce() ;
-    delay( 100 ) ;
-    debounce() ;
 
-   
-    storePoint(  0, 0) ;
-    storePoint(  1, 1) ;
-    storePoint(  2, 2) ;
-    storePoint(  3, 3) ;
-    storePoint(  4, 4) ;
-    storePoint(  5, 5) ;
-    storePoint(  6, 6) ;
-    storePoint(  7, 7) ;
-    storePoint(  8, 8) ;
-    storePoint(  9, 9^0x8000 ) ;
-    storePoint( 10, 10^0x8000 ) ;
-    storePoint( 11, 11^0x8000 ) ;
-    storePoint( 12, 12^0x8000 ) ;
-    storePoint( 13, 13^0x8000 ) ;
-    storePoint( 14, 14^0x8000 ) ;
-    storePoint( 15, 15^0x8000 ) ;
-    storePoint( 16, 16^0x8000 ) ;
+    debounce() ;
+    delay( 100 ) ;
+    debounce() ;
+    delay( 100 ) ;
+    debounce() ;
+    delay( 100 ) ;
+    debounce() ;
+    delay( 100 ) ;
+    debounce() ;
 
     #ifdef DEBUG
+    // storePoint(  0, 0) ;
+    // storePoint(  1, 1) ;
+    // storePoint(  2, 2) ;
+    // storePoint(  3, 3) ;
+    // storePoint(  4, 4) ;
+    // storePoint(  5, 5) ;
+    // storePoint(  6, 6) ;
+    // storePoint(  7, 7) ;
+    // storePoint(  8, 8) ;
+    // storePoint(  9, 9^0x8000 ) ;
+    // storePoint( 10, 10^0x8000 ) ;
+    // storePoint( 11, 11^0x8000 ) ;
+    // storePoint( 12, 12^0x8000 ) ;
+    // storePoint( 13, 13^0x8000 ) ;
+    // storePoint( 14, 14^0x8000 ) ;
+    // storePoint( 15, 15^0x8000 ) ;
+    // storePoint( 16, 16^0x8000 ) ;
+
     Serial.begin(115200);
     Serial.println("booted");
+
+    for( int i = 0 ; i < 16 ; i ++ )
+    {
+        uint16_t address = loadPoint( i ) ;    
+        Serial.print(i) ; Serial.print( " address raw = ") ; Serial.print(address);
+
+        uint16_t state = address >> 15 ;                                  // stuff MSB in state
+        address &= 0x3FF ; 
+
+        Serial.print( " address = ") ; Serial.print(address); Serial.print( " state = ") ; Serial.println(state);
+
+    }
+
     #else
      Xnet.setup( Loco28 , rs485dir ) ;
     #endif
 }
+
 
 
 void loop()
@@ -175,35 +205,6 @@ void loop()
     
     #ifndef DEBUG
     Xnet.update() ;
-    #else
-    REPEAT_MS(500)
-    {
-        Serial.println(store.readInput());
-    } END_REPEAT
     #endif
-
-    // switch( state )  DELETE ME
-    // {
-    // case 0: 
-    //     if( lastAddress != prevAddress )
-    //     {   prevAddress  = lastAddress ;
-
-    //         blinkAmount = lastAddress * 2 + 2 ;
-    //         blinkCounter = 0 ;
-    //         state = 1 ;
-    //         digitalWrite(13, LOW) ;
-    //     }
-    //     break ;
-
-    // case 1:
-    //     if( millis() - blinkTime >= 200 )
-    //     {   blinkTime = millis() ;
-
-    //         PORTB ^= (1<<5) ;
-    //         if( ++blinkCounter == blinkAmount ) { state = 0 ; digitalWrite(13, LOW) ; }
-    //     }
-    //     break ;
-    // }
-
 
 }
