@@ -53,11 +53,11 @@ uint8_t  lastPos  ;
 
 
 /********** FUNCTIONS *************/
-void notifyXNetPower( uint8_t State )
-{
-    if( State == csNormal ) PORTC = 0 ;
-    else                    PORTC = 3 ;
-}
+// void notifyXNetPower( uint8_t State )
+// {
+//     if( State == csNormal ) PORTC = 0 ;
+//     else                    PORTC = 3 ;]
+// }
 
 void notifyXNetTrnt( uint16_t address,  uint8_t Pos )				            // ONLY WORKS IF OTHER DEVICES DOES SOMETHIMG
 {
@@ -116,8 +116,8 @@ void readSwitches()
             else                                                                // store point
             {   
                 uint16_t toStore ;
-                if( btnState ==  RISING ) toStore = lastAddress | ((lastPos ^ 0x1) << 15) ;
-                else                      toStore = lastAddress | ((lastPos      ) << 15) ;
+                if( btnState ==  RISING ) toStore = lastAddress | (/*(lastPos ^ 0x1)*/0x1 << 15) ;
+                else                      toStore = lastAddress | (/*(lastPos      )*/0x0 << 15) ;
 
                 storePoint( pin, toStore ) ;
 
