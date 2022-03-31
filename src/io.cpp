@@ -17,6 +17,6 @@ extern void initIO(void) {
 	pinMode(Inp13, INPUT_PULLUP);
 	pinMode(Inp14, INPUT_PULLUP);
 	pinMode(Inp15, INPUT_PULLUP);
-	pinMode(Inp16, INPUT_PULLUP);
+	pinMode(Inp16, OUTPUT);
 	pinMode(storeSwitch, INPUT_PULLUP);
 }
