@@ -121,91 +121,21 @@ void readSwitches()
 void setup()
 {
     initIO() ;
-    pinMode( Inp16, OUTPUT ) ;   // blink LED so I can see that arduino has booted
-    digitalWrite( Inp16, HIGH ) ;
-    delay(100) ;
-    digitalWrite( Inp16, LOW ) ;
-    delay(100) ;
-    digitalWrite( Inp16, HIGH ) ;
-    delay(100) ;
-    digitalWrite( Inp16, LOW ) ;
-    delay(100) ;
-    digitalWrite( Inp16, HIGH ) ;
-    delay(100) ;
-    digitalWrite( Inp16, LOW ) ;
-
-    debounce() ;
-    delay( 100 ) ;
-    debounce() ;
-    delay( 100 ) ;
-    debounce() ;
-    delay( 100 ) ;
     debounce() ;
     delay( 100 ) ;
     debounce() ;
 
-
-    #ifdef DEBUG
-    // storePoint(  0, 0) ;
-    // storePoint(  1, 1) ;
-    // storePoint(  2, 2) ;
-    // storePoint(  3, 3) ;
-    // storePoint(  4, 4) ;
-    // storePoint(  5, 5) ;
-    // storePoint(  6, 6) ;
-    // storePoint(  7, 7) ;
-    // storePoint(  8, 8) ;
-    // storePoint(  9, 9^0x8000 ) ;
-    // storePoint( 10, 10^0x8000 ) ;
-    // storePoint( 11, 11^0x8000 ) ;
-    // storePoint( 12, 12^0x8000 ) ;
-    // storePoint( 13, 13^0x8000 ) ;
-    // storePoint( 14, 14^0x8000 ) ;
-    // storePoint( 15, 15^0x8000 ) ;
-    // storePoint( 16, 16^0x8000 ) ;
-
-    Serial.begin(115200);
-    Serial.println("booted");
-
-    for( int i = 0 ; i < 16 ; i ++ )
-    {
-        uint16_t address = loadPoint( i ) ;    
-        Serial.print(i) ; Serial.print( " address raw = ") ; Serial.print(address);    // I often use the DEBUG flag in combination with EEPROM to fetch XpressNet info when live and display it in Debug mode.
-
-        uint16_t state = address >> 15 ;                                  // stuff MSB in state
-        address &= 0x3FF ; 
-
-        Serial.print( " address = ") ; Serial.print(address); Serial.print( " state = ") ; Serial.println(state);
-
-    }
-
-    #else
     Xnet.setup( Loco128 , rs485dir ) ;
-    #endif
 }
 
-volatile bool flash ;
 
 
 void loop()
 {
-    REPEAT_MS( 200 )
-    {
-        if( flash )
-        {
-            flash = false ;
-            digitalWrite( Inp16, HIGH ) ;
-        }
-        else if( digitalRead( Inp16 ) == HIGH )
-        {
-            digitalWrite( Inp16, LOW ) ;
-        }
-    } END_REPEAT
 
     debounce() ;
     readSwitches() ;
 
-    mode = NORMAL ;
     if( store.readInput() == HIGH ) { mode =  NORMAL ; }
     if( store.readInput() ==  LOW ) { mode = TEACHIN ; }
     
@@ -219,8 +149,6 @@ void notifyXNetTrnt( uint16_t Address,  uint8_t data )
 {
     if( bitRead( data, 3 ) == 1 )
     {
-        flash = true ;
-
         if( mode == NORMAL ) return ;
 
         lastAddress  = Address;// & 0x03FF ;
